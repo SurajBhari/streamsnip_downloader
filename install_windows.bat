@@ -35,6 +35,10 @@ echo [INFO] Installing/Upgrading yt-dlp, requests, colorama...
 python -m pip install --upgrade pip
 python -m pip install --upgrade yt-dlp requests colorama
 
+:: Download latest streamsnip_cli.py from GitHub
+powershell -Command "Invoke-WebRequest -Uri https://raw.githubusercontent.com/surajbhari/streamsnip_downloader/main/streamsnip_cli.py -OutFile '%~dp0streamsnip_cli.py'"
+
+:: Launch CLI
 echo [INFO] Launching StreamSnip Downloader CLI...
 python "%~dp0streamsnip_cli.py"
 
