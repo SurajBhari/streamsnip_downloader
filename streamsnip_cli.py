@@ -43,15 +43,15 @@ else:
 
 # Download and store using ranges
 def download_and_store(video_url, clip, extra=0.0, fmt=None):
-    start = int(clip['clip_time'] + extra)
+    start = int(clip['clip_time'] + -extra)
     delay = clip.get('delay') or -60
     # compute end based on delay
-    end = start + (-delay)
+    end = int(start + (-delay) + extra*2) # double the extra to account for both ends
     desc = clip['message'].replace(' ', '_')
     cid = clip['id']
     sid = clip['stream_id']
     ext = fmt or 'mp4'
-    file_name = f"{desc}_{cid}_{sid}.{ext}"
+    file_name = f"{desc}_{cid}_{sid}_{start}_{end}.{ext}"
     output_dir = os.path.join('clips', sid)
     os.makedirs(output_dir, exist_ok=True)
     outtmpl = os.path.join(output_dir, file_name)
@@ -63,7 +63,6 @@ def download_and_store(video_url, clip, extra=0.0, fmt=None):
         "download_ranges": ytd_utils.download_range_func([], [[int(start), int(end)]]),
         "match_filter": ytd_utils.match_filter_func("!is_live & live_status!=is_upcoming & availability=public"),
         "no_warnings": False,
-        "noprogress": False,
         "outtmpl": outtmpl,
         "overwrites": False,
         "quiet": False,
@@ -72,9 +71,9 @@ def download_and_store(video_url, clip, extra=0.0, fmt=None):
     if fmt:
         params["postprocessors"] = [{
             "key": "FFmpegVideoConvertor",
-            "preferedformat": format
+            "preferedformat": fmt
         }]
-        params["final_ext"] = format
+        params["final_ext"] = fmt
 
     with YoutubeDL(params) as ydl:
         try:
