@@ -1,76 +1,85 @@
 #!/bin/bash
-# ----------------------------------------
-# Bootstrapper for macOS
-# Ensures Python3, pip, ffmpeg, yt-dlp, and Git repo are ready
-# Then runs the Python CLI
-# ----------------------------------------
 
-set -e
+echo "================================="
+echo " StreamSnip Downloader Setup"
+echo "================================="
 
-info() {
-  echo -e "\033[1;34m[INFO]\033[0m $1"
+MISSING_DEPS=0
+
+# Function to check for command existence
+check_command() {
+  if ! command -v "$1" &> /dev/null; then
+    return 1
+  fi
+  return 0
 }
 
-error() {
-  echo -e "\033[1;31m[ERROR]\033[0m $1" >&2
-}
-
-# Check for Homebrew
-if ! command -v brew >/dev/null 2>&1; then
-  info "Homebrew not found. Installing..."
-  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-else
-  info "Homebrew found."
+# --- Check Homebrew ---
+if ! check_command brew; then
+  echo "[~] Homebrew not found. Installing..."
+  NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  eval "$(/opt/homebrew/bin/brew shellenv)"  # For Apple Silicon
 fi
 
-# Ensure Python3
-if ! command -v python3 >/dev/null 2>&1; then
-  info "Installing Python3..."
+# --- Check Python3 ---
+if ! check_command python3; then
+  echo "[~] Python3 not found. Installing with Homebrew..."
   brew install python
 else
-  info "Python3 found."
+  echo "[OK] Python3 is installed."
 fi
 
-# Ensure ffmpeg
-if ! command -v ffmpeg >/dev/null 2>&1; then
-  info "Installing ffmpeg..."
-  brew install ffmpeg
-else
-  info "ffmpeg found."
-fi
-
-# Ensure Git
-if ! command -v git >/dev/null 2>&1; then
-  info "Installing Git..."
+# --- Check Git ---
+if ! check_command git; then
+  echo "[~] Git not found. Installing with Homebrew..."
   brew install git
 else
-  info "Git found."
+  echo "[OK] Git is installed."
 fi
 
-# Upgrade pip and install required packages
-info "Installing/Upgrading yt-dlp, requests, colorama..."
-pip3 install --upgrade pip
+# --- Check FFmpeg ---
+if ! check_command ffmpeg; then
+  echo "[~] FFmpeg not found. Installing with Homebrew..."
+  brew install ffmpeg
+else
+  echo "[OK] FFmpeg is installed."
+fi
+
+# --- Upgrade Python packages ---
+echo "[~] Installing/updating Python packages..."
 pip3 install --upgrade yt-dlp requests colorama
 
-# Setup streamsnip_downloader repo
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR"
+# --- Git repo check ---
+REPO_URL="https://github.com/surajbhari/streamsnip_downloader"
+FOLDER_NAME="streamsnip_downloader"
 
-REPO_DIR="$SCRIPT_DIR/streamsnip_downloader"
-if [ ! -d "$REPO_DIR/.git" ]; then
-  if [ -d "$REPO_DIR" ]; then
-    info "Cleaning up existing non-git directory..."
-    rm -rf "$REPO_DIR"
+if [ -d .git ]; then
+  CURRENT_URL=$(git config --get remote.origin.url)
+  if [ "$CURRENT_URL" = "$REPO_URL" ]; then
+    echo "[OK] Git remote is correct. Pulling updates..."
+    git fetch origin
+    git reset --hard origin/main
+  else
+    echo "[~] Git remote is incorrect. Reconfiguring..."
+    rm -rf .git
+    git init
+    git remote add origin "$REPO_URL"
+    git fetch origin
+    git reset --hard origin/main
   fi
-  info "Cloning streamsnip_downloader into $REPO_DIR..."
-  git clone https://github.com/surajbhari/streamsnip_downloader.git "$REPO_DIR"
+elif [ -d "$FOLDER_NAME/.git" ]; then
+  echo "[OK] Found $FOLDER_NAME folder with Git. Pulling updates..."
+  cd "$FOLDER_NAME" || exit
+  git fetch origin
+  git reset --hard origin/main
 else
-  info "Git repo found. Pulling latest changes..."
-  cd "$REPO_DIR"
-  git reset --hard
-  git pull origin main
+  echo "[~] Cloning the StreamSnip repo..."
+  git clone "$REPO_URL"
+  cd "$FOLDER_NAME" || exit
 fi
 
-# Run CLI
-info "Launching StreamSnip CLI..."
-python3 "$REPO_DIR/streamsnip_cli.py"
+echo "================================="
+echo " Launching StreamSnip CLI"
+echo "================================="
+
+python3 streamsnip_cli.py
