@@ -1,7 +1,7 @@
 #!/bin/bash
 # ----------------------------------------
 # Bootstrapper for macOS
-# Ensures Python3, pip, ffmpeg, and yt-dlp are installed
+# Ensures Python3, pip, ffmpeg, yt-dlp, and Git repo are ready
 # Then runs the Python CLI
 # ----------------------------------------
 
@@ -39,16 +39,38 @@ else
   info "ffmpeg found."
 fi
 
+# Ensure Git
+if ! command -v git >/dev/null 2>&1; then
+  info "Installing Git..."
+  brew install git
+else
+  info "Git found."
+fi
+
 # Upgrade pip and install required packages
 info "Installing/Upgrading yt-dlp, requests, colorama..."
 pip3 install --upgrade pip
 pip3 install --upgrade yt-dlp requests colorama
 
-# Download latest CLI script
-CLI_FILE="$(dirname "$0")/streamsnip_cli.py"
-info "Downloading latest streamsnip_cli.py from GitHub..."
-curl -sSfL "https://raw.githubusercontent.com/surajbhari/streamsnip_downloader/main/streamsnip_cli.py" -o "$CLI_FILE"
+# Setup streamsnip_downloader repo
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR"
+
+REPO_DIR="$SCRIPT_DIR/streamsnip_downloader"
+if [ ! -d "$REPO_DIR/.git" ]; then
+  if [ -d "$REPO_DIR" ]; then
+    info "Cleaning up existing non-git directory..."
+    rm -rf "$REPO_DIR"
+  fi
+  info "Cloning streamsnip_downloader into $REPO_DIR..."
+  git clone https://github.com/surajbhari/streamsnip_downloader.git "$REPO_DIR"
+else
+  info "Git repo found. Pulling latest changes..."
+  cd "$REPO_DIR"
+  git reset --hard
+  git pull origin main
+fi
 
 # Run CLI
 info "Launching StreamSnip CLI..."
-python3 "$CLI_FILE"
+python3 "$REPO_DIR/streamsnip_cli.py"
