@@ -37,7 +37,7 @@ install_if_missing "FFmpeg" "ffmpeg" "ffmpeg"
 
 # Python packages
 echo "[~] Installing/updating Python packages..."
-pip3 install --upgrade yt-dlp requests colorama
+pip3 install --upgrade --break-system-packages yt-dlp requests colorama
 
 # Git repo setup
 REPO_URL="https://github.com/surajbhari/streamsnip_downloader"
