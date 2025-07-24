@@ -30,6 +30,8 @@ run_cmd(f'git remote remove origin')
 run_cmd(f'git remote add origin {REPO_URL}')
 run_cmd('git fetch origin')
 run_cmd('git reset --hard origin/main')
+run_cmd("clear")
+run_cmd('cls')
 
 # Download and store using ranges
 def download_and_store(video_url, clip, extra=0.0, fmt=None):
