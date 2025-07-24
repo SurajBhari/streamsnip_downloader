@@ -24,14 +24,19 @@ def run_cmd(cmd, cwd=".", capture=False):
     return result.stdout.strip() if capture else None
 
 # Ensure repo directory exists and update from remote
-print(Fore.GREEN + '[INFO]' + Style.RESET_ALL + ' Initializing Git repo and fetching latest code...')
-run_cmd('git init')
-run_cmd(f'git remote remove origin')
-run_cmd(f'git remote add origin {REPO_URL}')
-run_cmd('git fetch origin')
-run_cmd('git reset --hard origin/main')
-run_cmd("clear")
-run_cmd('cls')
+# if "--no-update" not in sys.argv:
+if "--no-update" not in sys.argv:
+    print(Fore.GREEN + '[INFO]' + Style.RESET_ALL + ' Initializing Git repo and fetching latest code...')
+    run_cmd('git init')
+    run_cmd(f'git remote remove origin')
+    run_cmd(f'git remote add origin {REPO_URL}')
+    run_cmd('git fetch origin')
+    run_cmd('git reset --hard origin/main')
+    run_cmd("clear")
+    run_cmd('cls')
+    print(Fore.GREEN + '[DONE] Repo initialized and updated.' + Style.RESET_ALL)
+else:
+    print(Fore.YELLOW + '[WARN] Skipping repo update as --no-update flag is set.' + Style.RESET_ALL)
 
 # Download and store using ranges
 def download_and_store(video_url, clip, extra=0.0, fmt=None):
