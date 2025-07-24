@@ -6,6 +6,7 @@ import requests
 from colorama import Fore, Style
 from yt_dlp import YoutubeDL, utils as ytd_utils
 from urllib import parse
+import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # ----------------- CONFIG -------------------
@@ -15,11 +16,37 @@ progress_data = {}
 progress_lock = threading.Lock()
 stop_progress = threading.Event()
 
+format_dict = {}
+# Configuration
+REPO_URL = 'https://github.com/surajbhari/streamsnip_downloader.git'
+API_TEMPLATE = 'https://streamsnip.com/extension/clips/{}'
+
+# Helper to run commands
+def run_cmd(cmd, cwd=".", capture=False):
+    result = subprocess.run(cmd, shell=True, cwd=cwd,
+                            stdout=subprocess.PIPE if capture else None,
+                            stderr=subprocess.PIPE if capture else None,
+                            text=True)
+    return result.stdout.strip() if capture else None
+
+# Repo update
+if "--no-update" not in sys.argv:
+    print(Fore.GREEN + '[INFO]' + Style.RESET_ALL + ' Initializing Git repo and fetching latest code...')
+    run_cmd('git init')
+    run_cmd(f'git remote remove origin')
+    run_cmd(f'git remote add origin {REPO_URL}')
+    run_cmd('git fetch origin')
+    run_cmd('git reset --hard origin/main')
+    run_cmd("clear")
+    run_cmd('cls')
+    print(Fore.GREEN + '[DONE] Repo initialized and updated.' + Style.RESET_ALL)
+else:
+    print(Fore.YELLOW + '[WARN] Skipping repo update as --no-update flag is set.' + Style.RESET_ALL)
+
 # ----------------- PROGRESS HOOKS -------------------
 def make_progress_hook(index):
     def hook(d):
         progress_data[index] = d['status']
-        return hook
         if d['status'] == 'downloading':
             total = d.get('total_bytes') or d.get('total_bytes_estimate') or 1
             downloaded = d.get('downloaded_bytes', 0)
@@ -38,9 +65,9 @@ def progress_updater(total):
         with progress_lock:
             lines = [f"Downloading {i+1}/{total} .... {progress_data.get(i, '0%')}" for i in range(total)]
             output = "\n".join(lines)
-        sys.stdout.write("\033[H\033[J")  # clear screen
-        sys.stdout.write(output + "\n")
-        sys.stdout.flush()
+        #sys.stdout.write("\033[H\033[J")  # clear screen
+        #sys.stdout.write(output + "\n")
+        #sys.stdout.flush()
         stop_progress.wait(0.2)
 
 # ----------------- DOWNLOAD FUNCTION -------------------
@@ -51,8 +78,17 @@ def download_clip(index, video_url, clip, extra, fmt, force_cuts_at_keyframes):
     desc = clip['message'].replace(' ', '_')
     cid = clip['id']
     sid = clip['stream_id']
-    
-    file_name = f"{desc}_{cid}_{sid}_{start}_{end}.{ext}"
+    formats = get_available_format(sid)
+    selected_format = next((f for f in formats if f['format_id'] == fmt), None)
+
+    for format in formats:
+        if format['format_id'] == fmt:
+            selected_format = format
+            break
+    if not selected_format:
+        print(Fore.RED + f'[ERROR] Format {fmt} not found for stream {sid}.' + Style.RESET_ALL)
+        return
+    file_name = f"{desc}_{cid}_{sid}_{start}_{end}"
     output_dir = os.path.join('clips', sid)
     os.makedirs(output_dir, exist_ok=True)
     outtmpl = os.path.join(output_dir, file_name)
@@ -70,6 +106,9 @@ def download_clip(index, video_url, clip, extra, fmt, force_cuts_at_keyframes):
     }
     if fmt:
         params["format"] = fmt + "+bestaudio"
+        ext = selected_format['ext']
+        params['outtmpl'] = os.path.join(output_dir, file_name) + f".{ext}"
+        params["merge_output_format"]= ext
     if force_cuts_at_keyframes:
         params["force_keyframes_at_cuts"] = True
 
@@ -105,6 +144,8 @@ def time_to_hms(seconds: int):
 
 
 def get_available_format(stream_id):
+    if format_dict.get(stream_id):
+        return format_dict[stream_id]
     video_url = f"https://youtube.com/watch?v={stream_id}"
     # Fetch available formats using yt_dlp
     params = {
@@ -121,17 +162,18 @@ def get_available_format(stream_id):
                 {
                     "format_id": f["format_id"],
                     "ext": f["ext"],
-                    "format_note": f.get("format_note", "Unknown"),
+                    "format_note": f.get("format_note"),
                     "resolution": f.get("resolution", "Unknown"),
                     "filesize": f.get("filesize", "Unknown"),
                     "quality": f.get("quality", "Unknown"),
                 }
-                for f in formats
+                for f in formats if f.get("format_note")
             ]
+            # only keep formats with a valid format_note other doesn't work
 
             # Save to JSON
             os.makedirs("clips", exist_ok=True)
-
+            format_dict[stream_id] = available_formats[::-1][:5]
             return available_formats[::-1][:5] # Reverse to show best formats first
 
         except ytd_utils.DownloadError as e:
@@ -194,9 +236,11 @@ def main():
 
             extra += extra_extra
         print(Fore.YELLOW + f'Extra seconds added: {extra}' + Style.RESET_ALL)
-        available_formats = get_available_format(sid)
         fmt = input('Do You want custom format ? (y/N)').strip().lower() == 'y'
+
         if fmt:
+            print(Fore.YELLOW + 'Fetching available formats...' + Style.RESET_ALL)
+            available_formats = get_available_format(sid)
             print(Fore.BLUE + 'Available formats:' + Style.RESET_ALL)
             for f in available_formats:
                 print(f"Format ID: {f['format_id']}, Extension: {f['ext']}, Note: {f['format_note']}, Resolution: {f['resolution']}, Filesize: {f['filesize']}, Quality: {f['quality']}")
@@ -204,7 +248,8 @@ def main():
             if fmt_id not in [f['format_id'] for f in available_formats]:
                 print(Fore.RED + '[ERROR] Invalid format ID.' + Style.RESET_ALL)
                 continue
-        
+        else:
+            fmt_id = None
         force_cuts_at_keyframes = input('Force cuts at keyframes? (will remove blank space from starting but may take longer time) (y/N): ').strip().lower() == 'y'
         # Launch progress updater
         total = len(indices)
