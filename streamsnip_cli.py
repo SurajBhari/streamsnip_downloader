@@ -36,18 +36,18 @@ if "--no-update" not in sys.argv:
     run_cmd(f'git remote remove origin')
     run_cmd(f'git remote add origin {REPO_URL}')
     fetch_origin_output = run_cmd('git fetch origin', capture=True)
+    reset_output = run_cmd('git reset --hard origin/main', capture=True)
     run_cmd('git reset --hard origin/main')
     run_cmd("clear")
     run_cmd('cls')
     print(Fore.GREEN + '[DONE] Repo initialized and updated.' + Style.RESET_ALL)
-    if fetch_origin_output.strip():
-        print(Fore.YELLOW + '[INFO] Fetch output:' + Style.RESET_ALL)
-        print(fetch_origin_output)
-        # restart the script to apply changes
-        print(Fore.YELLOW + '[INFO] Restarting script to apply changes...' + Style.RESET_ALL)
-        os.execv(sys.executable, [sys.executable] + sys.argv)
-        input(Fore.YELLOW + '[INFO] Press Enter to continue...' + Style.RESET_ALL)
-
+    if "up to date" not in reset_output.lower():
+        print(Fore.YELLOW + '[INFO] Code updated, restarting script...' + Style.RESET_ALL)
+        script_path = os.path.abspath(sys.argv[0])
+        os.execl(sys.executable, sys.executable, script_path, *sys.argv[1:])
+    else:
+        print(Fore.GREEN + '[INFO] Already up to date.' + Style.RESET_ALL)
+        
 else:
     print(Fore.YELLOW + '[WARN] Skipping repo update as --no-update flag is set.' + Style.RESET_ALL)
 
