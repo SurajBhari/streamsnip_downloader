@@ -65,55 +65,60 @@ def progress_updater(total):
         with progress_lock:
             lines = [f"Downloading {i+1}/{total} .... {progress_data.get(i, '0%')}" for i in range(total)]
             output = "\n".join(lines)
-        #sys.stdout.write("\033[H\033[J")  # clear screen
-        #sys.stdout.write(output + "\n")
-        #sys.stdout.flush()
+        sys.stdout.write("\033[H\033[J")  # clear screen
+        sys.stdout.write(output + "\n")
+        sys.stdout.flush()
         stop_progress.wait(0.2)
 
 # ----------------- DOWNLOAD FUNCTION -------------------
 def download_clip(index, video_url, clip, extra, fmt, force_cuts_at_keyframes):
-    start = int(clip['clip_time'] - extra)
-    delay = clip.get('delay') or -60
-    end = int(start + (-delay) + extra * 2)
-    desc = clip['message'].replace(' ', '_')
-    cid = clip['id']
-    sid = clip['stream_id']
-    formats = get_available_format(sid)
-    selected_format = next((f for f in formats if f['format_id'] == fmt), None)
+    try:
+        start = int(clip['clip_time'] - extra)
+        delay = clip.get('delay') or -60
+        end = int(start + (-delay) + extra * 2)
+        desc = clip['message'].replace(' ', '_')
+        cid = clip['id']
+        sid = clip['stream_id']
+        formats = get_available_format(sid)
+        selected_format = next((f for f in formats if f['format_id'] == fmt), None)
 
-    for format in formats:
-        if format['format_id'] == fmt:
-            selected_format = format
-            break
-    if not selected_format:
-        print(Fore.RED + f'[ERROR] Format {fmt} not found for stream {sid}.' + Style.RESET_ALL)
-        return
-    file_name = f"{desc}_{cid}_{sid}_{start}_{end}"
-    output_dir = os.path.join('clips', sid)
-    os.makedirs(output_dir, exist_ok=True)
-    outtmpl = os.path.join(output_dir, file_name)
+        if not selected_format and fmt:
+            with progress_lock:
+                progress_data[index] = f"[ERROR] Format {fmt} not found"
+            return
 
-    if os.path.exists(outtmpl):
+        file_name = f"{desc}_{cid}_{sid}_{start}_{end}"
+        output_dir = os.path.join('clips', sid)
+        os.makedirs(output_dir, exist_ok=True)
+        outtmpl = os.path.join(output_dir, file_name)
+
+        if os.path.exists(outtmpl):
+            with progress_lock:
+                progress_data[index] = "Already exists"
+            return
+
+        params = {
+            "download_ranges": ytd_utils.download_range_func([], [[start, end]]),
+            "outtmpl": outtmpl,
+            "quiet": True,
+            "progress_hooks": [make_progress_hook(index)]
+        }
+        if fmt:
+            params["format"] = fmt + "+bestaudio"
+            ext = selected_format['ext']
+            params['outtmpl'] = os.path.join(output_dir, file_name) + f".{ext}"
+            params["merge_output_format"] = ext
+        if force_cuts_at_keyframes:
+            params["force_keyframes_at_cuts"] = True
+
+        with YoutubeDL(params) as ydl:
+            ydl.download([video_url])
+
+    except Exception as e:
         with progress_lock:
-            progress_data[index] = "Already exists"
-        return
+            progress_data[index] = f"[ERROR] {str(e)}"
+        print(Fore.RED + f"[ERROR] Clip index {index+1} failed: {e}" + Style.RESET_ALL)
 
-    params = {
-        "download_ranges": ytd_utils.download_range_func([], [[start, end]]),
-        "outtmpl": outtmpl,
-        "quiet": True,
-        "progress_hooks": [make_progress_hook(index)]
-    }
-    if fmt:
-        params["format"] = fmt + "+bestaudio"
-        ext = selected_format['ext']
-        params['outtmpl'] = os.path.join(output_dir, file_name) + f".{ext}"
-        params["merge_output_format"]= ext
-    if force_cuts_at_keyframes:
-        params["force_keyframes_at_cuts"] = True
-
-    with YoutubeDL(params) as ydl:
-        ydl.download([video_url])
 
 # ----------------- URL HELPERS -------------------
 def get_video_id(video_link):
