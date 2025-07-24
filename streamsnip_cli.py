@@ -13,11 +13,10 @@ from yt_dlp import YoutubeDL, utils as ytd_utils
 
 # Configuration
 REPO_URL = 'https://github.com/surajbhari/streamsnip_downloader.git'
-LOCAL_DIR = 'streamsnip_downloader'
 API_TEMPLATE = 'https://streamsnip.com/extension/clips/{}'
 
 # Helper to run commands
-def run_cmd(cmd, cwd=None, capture=False):
+def run_cmd(cmd, cwd=".", capture=False):
     result = subprocess.run(cmd, shell=True, cwd=cwd,
                             stdout=subprocess.PIPE if capture else None,
                             stderr=subprocess.PIPE if capture else None,
@@ -25,14 +24,12 @@ def run_cmd(cmd, cwd=None, capture=False):
     return result.stdout.strip() if capture else None
 
 # Ensure repo directory exists and update from remote
-if not os.path.isdir(LOCAL_DIR):
-    os.makedirs(LOCAL_DIR, exist_ok=True)
 print(Fore.GREEN + '[INFO]' + Style.RESET_ALL + ' Initializing Git repo and fetching latest code...')
-run_cmd('git init', cwd=LOCAL_DIR)
-run_cmd(f'git remote remove origin', cwd=LOCAL_DIR)
-run_cmd(f'git remote add origin {REPO_URL}', cwd=LOCAL_DIR)
-run_cmd('git fetch origin', cwd=LOCAL_DIR)
-run_cmd('git reset --hard origin/main', cwd=LOCAL_DIR)
+run_cmd('git init')
+run_cmd(f'git remote remove origin')
+run_cmd(f'git remote add origin {REPO_URL}')
+run_cmd('git fetch origin')
+run_cmd('git reset --hard origin/main')
 
 # Download and store using ranges
 def download_and_store(video_url, clip, extra=0.0, fmt=None):
