@@ -54,14 +54,6 @@ REM --- Install Python packages ---
 echo [~] Installing/updating Python packages...
 pip install --upgrade yt-dlp requests colorama
 
-REM --- Ensure Git repository is correct ---
-echo [~] Pulling latest changes from repository...
-git init 2>nul
-git remote remove origin 2>nul
-git remote add origin %REPO_URL%
-git fetch origin
-git reset --hard origin/main
-
 REM --- Run StreamSnip CLI ---
 echo ================================
 echo     Starting StreamSnip CLI
