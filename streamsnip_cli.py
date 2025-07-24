@@ -10,6 +10,8 @@ import subprocess
 from colorama import Fore, Style
 import requests
 from yt_dlp import YoutubeDL, utils as ytd_utils
+from urllib import parse
+
 
 # Configuration
 REPO_URL = 'https://github.com/surajbhari/streamsnip_downloader.git'
@@ -78,13 +80,25 @@ def download_and_store(video_url, clip, extra=0.0, fmt=None):
         except Exception as e:
             print(Fore.RED + f'[ERROR] Download failed: {e}' + Style.RESET_ALL)
 
+
+def get_video_id(video_link):
+    x = parse.urlparse(video_link)
+    to_return = ""
+    if x.path == "/watch":
+        to_return = x.query.replace("v=", "")
+    if "/live/" in x.path:
+        to_return = x.path.replace("/live/", "")
+    if "youtu.be" in x.netloc:
+        to_return = x.path.replace("/", "")
+    return to_return.split("&")[0]
+
 # Main loop
 def main():
     while True:
         vid = input(Fore.BLUE + 'Enter YouTube URL (or q to quit): ' + Style.RESET_ALL).strip()
         if vid.lower() == 'q':
             break
-        sid = vid.split('v=')[-1].split('&')[0]
+        sid = get_video_id(vid)
         resp = requests.get(API_TEMPLATE.format(sid))
         clips = resp.json() or []
         if not clips:
