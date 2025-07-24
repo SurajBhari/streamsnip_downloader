@@ -71,22 +71,11 @@ if errorlevel 1 (
     echo [~] Not a Git repository. Initializing fresh repo...
     git init
     git remote add origin %REPO_URL%
-    git fetch origin
-    git reset --hard origin/main
 ) else (
-    for /f "delims=" %%i in ('git config --get remote.origin.url') do set REMOTE_URL=%%i
-    if /i "%REMOTE_URL%"=="%REPO_URL%" (
-        echo [OK] Git remote is correct. Pulling updates...
-        git fetch origin
-        git reset --hard origin/main
-    ) else (
-        echo [~] Fixing incorrect Git remote...
-        git remote remove origin
-        git remote add origin %REPO_URL%
-        git fetch origin
-        git reset --hard origin/main
-    )
+    git remote add origin %REPO_URL% 2>nul
 )
+git fetch origin
+git reset --hard origin/main
 
 :: --- Start StreamSnip CLI ---
 echo ==================================
