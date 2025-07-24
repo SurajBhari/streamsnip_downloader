@@ -24,29 +24,22 @@ def run_cmd(cmd, cwd=None, capture=False):
                             text=True)
     return result.stdout.strip() if capture else None
 
-# Clone or update repo
-if not os.path.isdir(os.path.join(LOCAL_DIR, '.git')):
-    print(Fore.GREEN + '[INFO]' + Style.RESET_ALL + ' Cloning repository...')
-    run_cmd(f'git clone {REPO_URL} {LOCAL_DIR}')
-else:
-    print(Fore.GREEN + '[INFO]' + Style.RESET_ALL + ' Checking for updates...')
-    run_cmd('git fetch', cwd=LOCAL_DIR)
-    local = run_cmd('git rev-parse HEAD', cwd=LOCAL_DIR, capture=True)
-    remote = run_cmd('git rev-parse origin/main', cwd=LOCAL_DIR, capture=True)
-    if local != remote:
-        print(Fore.GREEN + '[INFO]' + Style.RESET_ALL + ' Pulling latest changes...')
-        run_cmd('git pull', cwd=LOCAL_DIR)
-        print(Fore.GREEN + '[INFO]' + Style.RESET_ALL + ' Restarting with updated code...')
-        os.execv(sys.executable, ['python'] + sys.argv)
-    else:
-        print(Fore.GREEN + '[INFO]' + Style.RESET_ALL + ' Already up to date.')
+# Ensure repo directory exists and update from remote
+if not os.path.isdir(LOCAL_DIR):
+    os.makedirs(LOCAL_DIR, exist_ok=True)
+print(Fore.GREEN + '[INFO]' + Style.RESET_ALL + ' Initializing Git repo and fetching latest code...')
+run_cmd('git init', cwd=LOCAL_DIR)
+run_cmd(f'git remote remove origin', cwd=LOCAL_DIR)
+run_cmd(f'git remote add origin {REPO_URL}', cwd=LOCAL_DIR)
+run_cmd('git fetch origin', cwd=LOCAL_DIR)
+run_cmd('git reset --hard origin/main', cwd=LOCAL_DIR)
 
 # Download and store using ranges
 def download_and_store(video_url, clip, extra=0.0, fmt=None):
     start = int(clip['clip_time'] + -extra)
     delay = clip.get('delay') or -60
     # compute end based on delay
-    end = int(start + (-delay) + extra*2) # double the extra to account for both ends
+    end = int(start + (-delay) + extra*2)  # double the extra to account for both ends
     desc = clip['message'].replace(' ', '_')
     cid = clip['id']
     sid = clip['stream_id']
@@ -127,7 +120,6 @@ def main():
             print(Fore.RED + '[ERROR] No valid clips selected.' + Style.RESET_ALL)
             continue
         
-
         adj = input('Adjust delay? (y/N): ').strip().lower()
         extra = float(input('Seconds to adjust: ')) if adj == 'y' else 0.0
         fmt = input('Enter format extension (mp4, mkv) or leave blank: ').strip() or None
