@@ -2,6 +2,8 @@
 setlocal EnableDelayedExpansion
 color 0A
 
+set "CHOC_FLAG=%TEMP%\choco_installed.flag"
+
 echo ================================
 echo   StreamSnip Downloader Setup
 echo ================================
@@ -38,14 +40,22 @@ if errorlevel 1 (
 REM --- Check if Chocolatey is installed ---
 where choco >nul 2>&1
 if errorlevel 1 (
-    echo [!] Chocolatey is not installed. Installing now...
-    powershell -NoProfile -Command ^
-        "(New-Object Net.WebClient).DownloadFile('https://community.chocolatey.org/install.ps1','%TEMP%\choco.ps1')"
-    powershell -NoProfile -ExecutionPolicy Bypass -File "%TEMP%\choco.ps1"
-    echo [~] Chocolatey installed successfully.
-    echo [>] Restarting script...
-    start "" "%~f0"
-    exit /b
+    if exist "%CHOC_FLAG%" (
+        echo [!] Chocolatey installed but PATH not updated yet.
+        echo Please close and reopen this window, then run this script again.
+        pause
+        exit /b
+    ) else (
+        echo [!] Chocolatey is not installed. Installing now...
+        powershell -NoProfile -Command ^
+            "(New-Object Net.WebClient).DownloadFile('https://community.chocolatey.org/install.ps1','%TEMP%\choco.ps1')"
+        powershell -NoProfile -ExecutionPolicy Bypass -File "%TEMP%\choco.ps1"
+        echo > "%CHOC_FLAG%"
+        echo [>] Chocolatey installed successfully.
+        echo [>] Please restart this script manually (PATH will be updated automatically on new shell).
+        pause
+        exit /b
+    )
 )
 
 REM --- Install missing tools via Chocolatey ---
