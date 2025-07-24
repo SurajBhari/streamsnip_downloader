@@ -35,17 +35,17 @@ if errorlevel 1 (
     echo [OK] FFmpeg is installed.
 )
 
-REM --- Install Chocolatey only if needed ---
-if "!NEEDS_CHOCOLATEY!"=="1" (
-    where choco >nul 2>&1
-    if errorlevel 1 (
-        echo.
-        echo [!] Some required tools are missing.
-        echo [~] Chocolatey is required to install them.
-        echo [>] This script will now request Administrator access to continue...
-        powershell -Command "Start-Process '%~f0' -Verb RunAs"
-        exit /b
-    )
+REM --- Check if Chocolatey is installed ---
+where choco >nul 2>&1
+if errorlevel 1 (
+    echo [!] Chocolatey is not installed. Installing now...
+    powershell -NoProfile -Command ^
+        "(New-Object Net.WebClient).DownloadFile('https://community.chocolatey.org/install.ps1','%TEMP%\choco.ps1')"
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%TEMP%\choco.ps1"
+    echo [~] Chocolatey installed successfully.
+    echo [>] Restarting script...
+    start "" "%~f0"
+    exit /b
 )
 
 REM --- Install missing tools via Chocolatey ---
