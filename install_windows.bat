@@ -1,86 +1,71 @@
 @echo off
-setlocal
+setlocal EnableDelayedExpansion
 color 0A
 
-:: ==================================
-::   StreamSnip Downloader Setup
-:: ==================================
-echo ==================================
+echo ================================
 echo   StreamSnip Downloader Setup
-echo ==================================
+echo ================================
 
-:: --- Check dependencies ---
-set NEEDS_CHOCOLATEY=0
+set "REPO_URL=https://github.com/surajbhari/streamsnip_downloader"
+set "NEEDS_CHOCOLATEY=0"
 
+REM --- Check if Python is installed ---
 where python >nul 2>&1
 if errorlevel 1 (
     echo [~] Python not found and will be installed.
-    set NEEDS_CHOCOLATEY=1
+    set "NEEDS_CHOCOLATEY=1"
 ) else (
     echo [OK] Python is installed.
 )
 
+REM --- Check if Git is installed ---
 where git >nul 2>&1
 if errorlevel 1 (
     echo [~] Git not found and will be installed.
-    set NEEDS_CHOCOLATEY=1
+    set "NEEDS_CHOCOLATEY=1"
 ) else (
     echo [OK] Git is installed.
 )
 
+REM --- Check if FFmpeg is installed ---
 where ffmpeg >nul 2>&1
 if errorlevel 1 (
     echo [~] FFmpeg not found and will be installed.
-    set NEEDS_CHOCOLATEY=1
+    set "NEEDS_CHOCOLATEY=1"
 ) else (
     echo [OK] FFmpeg is installed.
 )
 
-:: --- Install Chocolatey if needed ---
+REM --- Install Chocolatey and dependencies if needed ---
 if "%NEEDS_CHOCOLATEY%"=="1" (
     where choco >nul 2>&1
     if errorlevel 1 (
-        echo.
-        echo [!] Some required tools are missing.
-        echo [~] Installing Chocolatey...
-        powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-WebRequest https://community.chocolatey.org/install.ps1 -UseBasicParsing | Invoke-Expression"
-        echo [>] Chocolatey installed. Please close and reopen this script to refresh PATH.
-        pause
-        exit /b
+        echo [!] Installing Chocolatey...
+        powershell -NoProfile -ExecutionPolicy Bypass -Command "Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))"
+        call refreshenv
     )
-)
-
-:: --- Install missing tools ---
-if "%NEEDS_CHOCOLATEY%"=="1" (
-    echo [~] Installing missing dependencies via Chocolatey...
+    echo [~] Installing missing tools...
     where python >nul 2>&1 || choco install python -y
     where git >nul 2>&1 || choco install git -y
     where ffmpeg >nul 2>&1 || choco install ffmpeg -y
 )
 
-:: --- Install Python packages ---
+REM --- Install Python packages ---
 echo [~] Installing/updating Python packages...
 pip install --upgrade yt-dlp requests colorama
 
-:: --- Setup Git repository ---
-echo [~] Checking Git repository...
-set REPO_URL=https://github.com/surajbhari/streamsnip_downloader
-
-git rev-parse --is-inside-work-tree >nul 2>&1
-if errorlevel 1 (
-    echo [~] Not a Git repository. Initializing fresh repo...
-    git init
-    git remote add origin %REPO_URL%
-) else (
-    git remote add origin %REPO_URL% 2>nul
-)
+REM --- Ensure Git repository is correct ---
+echo [~] Pulling latest changes from repository...
+git init 2>nul
+git remote remove origin 2>nul
+git remote add origin %REPO_URL%
 git fetch origin
 git reset --hard origin/main
 
-:: --- Start StreamSnip CLI ---
-echo ==================================
+REM --- Run StreamSnip CLI ---
+echo ================================
 echo     Starting StreamSnip CLI
-echo ==================================
+echo ================================
 python streamsnip_cli.py
 
 echo.
