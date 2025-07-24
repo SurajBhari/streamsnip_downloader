@@ -46,7 +46,8 @@ if "--no-update" not in sys.argv:
         # restart the script to apply changes
         print(Fore.YELLOW + '[INFO] Restarting script to apply changes...' + Style.RESET_ALL)
         os.execv(sys.executable, [sys.executable] + sys.argv)
-        
+        input(Fore.YELLOW + '[INFO] Press Enter to continue...' + Style.RESET_ALL)
+
 else:
     print(Fore.YELLOW + '[WARN] Skipping repo update as --no-update flag is set.' + Style.RESET_ALL)
 
