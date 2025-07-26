@@ -87,11 +87,11 @@ def progress_updater(total):
         stop_progress.wait(0.2)
 
 # ----------------- DOWNLOAD FUNCTION -------------------
-def download_clip(index, video_url, clip, extra, fmt, force_cuts_at_keyframes):
+def download_clip(index, video_url, clip, extra_start, extra_end, fmt, force_cuts_at_keyframes):
     try:
-        start = int(clip['clip_time'] - extra)
+        start = int(clip['clip_time'] - extra_start)
         delay = clip.get('delay') or -60
-        end = int(start + (-delay) + extra * 2)
+        end = int(start + (-delay) + extra_start + extra_end)
         desc = clip['message'].replace(' ', '_')
         cid = clip['id']
         sid = clip['stream_id']
@@ -259,7 +259,7 @@ def main():
 
             extra_start += extra_start_extra
             extra_end += extra_end_extra
-        print(Fore.YELLOW + f'Extra seconds added: {extra}' + Style.RESET_ALL)
+        print(Fore.YELLOW + f'Extra seconds added: {extra_start} in start, {extra_end} in end' + Style.RESET_ALL)
         fmt = input('Do You want custom format ? (y/N)').strip().lower() == 'y'
 
         if fmt:
@@ -284,7 +284,7 @@ def main():
         futures = []
         with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
             for idx, clip_index in enumerate(indices):
-                futures.append(executor.submit(download_clip, idx, vid, clips[clip_index - 1], extra, fmt_id, force_cuts_at_keyframes))
+                futures.append(executor.submit(download_clip, idx, vid, clips[clip_index - 1], extra_start, extra_end, fmt_id, force_cuts_at_keyframes))
             for f in as_completed(futures):
                 f.result()
 
