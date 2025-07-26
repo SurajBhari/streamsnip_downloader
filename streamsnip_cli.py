@@ -33,21 +33,30 @@ def run_cmd(cmd, cwd=".", capture=False):
 if "--no-update" not in sys.argv:
     print(Fore.GREEN + '[INFO]' + Style.RESET_ALL + ' Initializing Git repo and fetching latest code...')
     run_cmd('git init')
-    run_cmd(f'git remote remove origin')
+    run_cmd('git remote remove origin')
     run_cmd(f'git remote add origin {REPO_URL}')
-    fetch_origin_output = run_cmd('git fetch origin', capture=True)
-    reset_output = run_cmd('git reset --hard origin/main', capture=True)
-    run_cmd('git reset --hard origin/main')
-    run_cmd("clear")
-    run_cmd('cls')
-    print(Fore.GREEN + '[DONE] Repo initialized and updated.' + Style.RESET_ALL)
+
+    # Fetch remote
+    run_cmd('git fetch origin')
+
+    # Detect default branch (no grep/awk)
+    default_branch = run_cmd("git symbolic-ref refs/remotes/origin/HEAD", capture=True)
+    if default_branch:
+        default_branch = default_branch.strip().split("/")[-1]
+    else:
+        default_branch = "main"  # fallback
+
+    reset_output = run_cmd(f'git reset --hard origin/{default_branch}', capture=True)
+
+    # Clear terminal cross-platform
+    os.system("cls" if os.name == "nt" else "clear")
+
+    # Restart only if code actually updated
     if "up to date" not in reset_output.lower():
         print(Fore.YELLOW + '[INFO] Code updated, restarting script...' + Style.RESET_ALL)
-        script_path = os.path.abspath(sys.argv[0])
-        os.execl(sys.executable, sys.executable, script_path, *sys.argv[1:])
+        os.execv(sys.executable, [sys.executable] + sys.argv)
     else:
         print(Fore.GREEN + '[INFO] Already up to date.' + Style.RESET_ALL)
-        
 else:
     print(Fore.YELLOW + '[WARN] Skipping repo update as --no-update flag is set.' + Style.RESET_ALL)
 
