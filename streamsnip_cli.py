@@ -41,18 +41,17 @@ if "--no-update" not in sys.argv:
 
     # Detect default branch (no grep/awk)
     default_branch = run_cmd("git symbolic-ref refs/remotes/origin/HEAD", capture=True)
-    if default_branch:
-        default_branch = default_branch.strip().split("/")[-1]
-    else:
-        default_branch = "main"  # fallback
+
+    default_branch = "main"  # fallback
 
     reset_output = run_cmd(f'git reset --hard origin/{default_branch}', capture=True)
+    pull_output = run_cmd(f'git pull origin {default_branch}', capture=True)
 
     # Clear terminal cross-platform
     os.system("cls" if os.name == "nt" else "clear")
 
     # Restart only if code actually updated
-    if "up to date" not in reset_output.lower():
+    if "up to date" not in pull_output.lower():
         print(Fore.YELLOW + '[INFO] Code updated, restarting script...' + Style.RESET_ALL)
         os.execv(sys.executable, [sys.executable] + sys.argv)
     else:
