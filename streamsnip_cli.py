@@ -237,11 +237,12 @@ def main():
             print(Fore.RED + '[ERROR] No valid clips selected.' + Style.RESET_ALL)
             continue
         last_clip = clips[-1]
-        extra = 0
+        extra_start = 0
+        extra_end = 0
         while True:
-            start = int(last_clip['clip_time'] - extra)
+            start = int(last_clip['clip_time'] - extra_start)
             delay = last_clip.get('delay') or -60
-            end = int(start + (-delay) + extra * 2)
+            end = int(start + (-delay) + extra_start + extra_end)
 
             print("Last clip details:")
             print(f"  Message    : {last_clip['message']}")
@@ -251,12 +252,14 @@ def main():
             if adj != 'y':
                 break
             try:
-                extra_extra = int(input('Enter extra seconds to add to start and end (default 0): ').strip() or 0)
+                extra_start_extra = int(input('Enter extra seconds to add to start (default 0): ').strip() or 0)
+                extra_end_extra = int(input('Enter extra seconds to add to end (default 0): ').strip() or 0)
             except ValueError:
                 print(Fore.RED + '[ERROR] Invalid number.' + Style.RESET_ALL)
                 continue
 
-            extra += extra_extra
+            extra_start += extra_start_extra
+            extra_end += extra_end_extra
         print(Fore.YELLOW + f'Extra seconds added: {extra}' + Style.RESET_ALL)
         fmt = input('Do You want custom format ? (y/N)').strip().lower() == 'y'
 
