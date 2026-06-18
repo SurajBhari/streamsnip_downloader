@@ -21,7 +21,10 @@ format_dict = {}
 REPO_URL = 'https://github.com/surajbhari/streamsnip_downloader.git'
 API_TEMPLATE = 'https://streamsnip.com/extension/clips/{}'
 
-# Helper to run commands
+# Helper to run commands.
+# NOTE: shell=True is safe here — every command run through this helper is a static,
+# hard-coded git/system string. `default_branch` below comes from git's own
+# `origin/HEAD` output (the repo's remote), never from untrusted user input.
 def run_cmd(cmd, cwd=".", capture=False):
     result = subprocess.run(cmd, shell=True, cwd=cwd,
                             stdout=subprocess.PIPE if capture else None,
@@ -29,33 +32,39 @@ def run_cmd(cmd, cwd=".", capture=False):
                             text=True)
     return result.stdout.strip() if capture else None
 
+# Directory this script lives in. All self-update git operations are scoped here
+# so we never `git init` / `git reset --hard` over whatever directory you launched from.
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
 # Repo update
 if "--no-update" not in sys.argv:
-    print(Fore.GREEN + '[INFO]' + Style.RESET_ALL + ' Initializing Git repo and fetching latest code...')
-    run_cmd('git init')
-    run_cmd('git remote remove origin')
-    run_cmd(f'git remote add origin {REPO_URL}')
+    is_repo = run_cmd("git rev-parse --is-inside-work-tree", cwd=SCRIPT_DIR, capture=True) == "true"
+    remote = run_cmd("git remote get-url origin", cwd=SCRIPT_DIR, capture=True) if is_repo else ""
 
-    # Fetch remote
-    run_cmd('git fetch origin')
+    if is_repo and remote and "streamsnip_downloader" in remote:
+        print(Fore.GREEN + '[INFO]' + Style.RESET_ALL + ' Checking for updates...')
 
-    # Detect default branch (no grep/awk)
-    default_branch = run_cmd("git symbolic-ref refs/remotes/origin/HEAD", capture=True)
+        # Detect the remote's default branch, falling back to "main"
+        head_ref = run_cmd("git rev-parse --abbrev-ref origin/HEAD", cwd=SCRIPT_DIR, capture=True)
+        default_branch = head_ref.split("/", 1)[1] if head_ref and "/" in head_ref else "main"
 
-    default_branch = "main"  # fallback
+        before = run_cmd("git rev-parse HEAD", cwd=SCRIPT_DIR, capture=True)
+        run_cmd("git fetch origin", cwd=SCRIPT_DIR)
+        run_cmd(f"git reset --hard origin/{default_branch}", cwd=SCRIPT_DIR, capture=True)
+        after = run_cmd("git rev-parse HEAD", cwd=SCRIPT_DIR, capture=True)
 
-    reset_output = run_cmd(f'git reset --hard origin/{default_branch}', capture=True)
-    pull_output = run_cmd(f'git pull origin {default_branch}', capture=True)
+        # Clear terminal cross-platform
+        os.system("cls" if os.name == "nt" else "clear")
 
-    # Clear terminal cross-platform
-    os.system("cls" if os.name == "nt" else "clear")
-
-    # Restart only if code actually updated
-    if "up to date" not in pull_output.lower():
-        print(Fore.YELLOW + '[INFO] Code updated, restarting script...' + Style.RESET_ALL)
-        os.execv(sys.executable, [sys.executable] + sys.argv)
+        # Restart only if the code actually changed
+        if before and after and before != after:
+            print(Fore.YELLOW + '[INFO] Code updated, restarting script...' + Style.RESET_ALL)
+            os.execv(sys.executable, [sys.executable] + sys.argv)
+        else:
+            print(Fore.GREEN + '[INFO] Already up to date.' + Style.RESET_ALL)
     else:
-        print(Fore.GREEN + '[INFO] Already up to date.' + Style.RESET_ALL)
+        print(Fore.YELLOW + '[WARN] Not a streamsnip_downloader git checkout — skipping auto-update.' + Style.RESET_ALL)
+        print(Fore.YELLOW + '       Use the install script (or clone the repo) to enable updates.' + Style.RESET_ALL)
 else:
     print(Fore.YELLOW + '[WARN] Skipping repo update as --no-update flag is set.' + Style.RESET_ALL)
 
