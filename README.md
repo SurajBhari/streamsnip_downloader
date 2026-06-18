@@ -1,5 +1,10 @@
 # StreamSnip Downloader
 
+![Python](https://img.shields.io/badge/Python-3670A0?style=flat&logo=python&logoColor=ffdd54)
+![yt-dlp](https://img.shields.io/badge/yt--dlp-FF0000?style=flat&logo=youtube&logoColor=white)
+![FFmpeg](https://img.shields.io/badge/FFmpeg-007808?style=flat&logo=ffmpeg&logoColor=white)
+![CLI](https://img.shields.io/badge/CLI-tool-4EAA25?style=flat&logo=gnu-bash&logoColor=white)
+
 A command-line tool that downloads [StreamSnip](https://streamsnip.com) clips as **real video files**.
 
 StreamSnip itself only stores clip *metadata* (timestamps, messages) — not the video. This CLI takes that metadata for a given stream, then uses [`yt-dlp`](https://github.com/yt-dlp/yt-dlp) to pull only the exact second ranges of each clip straight from YouTube and saves them locally. Nothing but the lightweight clip metadata comes from StreamSnip; the video bytes come from YouTube.
